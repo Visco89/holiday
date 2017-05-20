@@ -1,1 +1,1 @@
-Project to calculate long weekend over the year
+Project to calculate long weekends over the year
