@@ -1,12 +1,6 @@
 from datetime import datetime, date, timedelta
 
-from numba.types import long_
-
-MAX_DAY_WORK_OFF = 3
-
-# casi che vanno bene
-# weekend + festività adiacenti
-# weekend + festività a MAX_DAY_WORK_OFF di distanza
+MAX_DAY_WORK_OFF = 4
 
 dates = [
     "01/01",
@@ -24,7 +18,7 @@ dates = [
 ]
 
 
-def pasquetta(y):
+def easter_monday(y):
     a = year % 19
     b = year // 100
     c = year % 100
@@ -38,35 +32,38 @@ def pasquetta(y):
 
 def party_time(d):
     if d.weekday() in set([5, 6]):
-        return True;
+        return True
     if d in holidays:
-        return True;
-    return False;
+        return True
+    return False
 
 
 def remove_work_day(dates):
     c = 0
-    # while not partyTime(dates[0]):
-    #     dates.pop(0)
-    #     c +=1
-    while not party_time(dates[-1]):
+    while dates and not party_time(dates[-1]):
         dates.pop(-1)
         c += 1
-    return dates, c;
+    return dates, c
 
 
 def remove_contained(long_weekend):
     for i in long_weekend:
         for j in long_weekend:
             if set(i['list']) < set(j['list']):
-                long_weekend.remove(i);
-    return long_weekend;
+                long_weekend.remove(i)
+    return long_weekend
 
+#####################################################################
 
 global holidays
-year = 2017  # int(input("Year:"))
+year = int(input("Year: "))
+max_day = int(input("How many day you can take (Max: {0})? ".format(MAX_DAY_WORK_OFF)))
+if max_day < 0 or max_day > MAX_DAY_WORK_OFF:
+    exit(-1)
+
+
 holidays = [datetime.strptime(date, "%d/%m").date().replace(year=year) for date in dates]
-holidays.append(pasquetta(year))
+holidays.append(easter_monday(year))
 
 delta = timedelta(days=1)
 long_weekend = []
@@ -75,20 +72,16 @@ for i in holidays:
     d = i
     work_day = 0
     cached = []
-    popped = 0
-    while work_day <= MAX_DAY_WORK_OFF:
+    while work_day <= max_day:
         if not party_time(d):
             work_day += 1
         cached.append(d)
         d += delta
-    if not (party_time(cached[-1])):
-        cached, popped = remove_work_day(cached)
-        if len(cached) > 2:
-            struct = dict()
-            struct['dayleft'] = popped
-            struct['day_taken'] = work_day - popped
-            struct['list'] = cached
-            long_weekend.append(struct)
+    cached, popped = remove_work_day(cached)
+    struct = dict()
+    struct['day_taken'] = work_day - popped
+    struct['list'] = cached
+    long_weekend.append(struct)
 
 long_weekend = remove_contained(long_weekend)
 
@@ -96,15 +89,17 @@ for i in long_weekend:
     d = i['list'][0] - delta
     cached = []
     work_day = 0
-    while work_day <= i['dayleft']:
+    while work_day <= max_day - i['day_taken']:
         if not party_time(d):
             work_day += 1
         cached.append(d)
         d -= delta
-    if not (party_time(cached[-1])):
-        cached, popped = remove_work_day(cached)
+    cached, popped = remove_work_day(cached)
+    if len(i['list'] + cached) < 3:
+        long_weekend.remove(i)
+    else:
         i['list'].extend(cached)
         i['list'].sort()
-        del i['dayleft']
         i['day_taken'] += work_day - popped
+
 print(long_weekend)
